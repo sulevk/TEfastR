@@ -1,0 +1,230 @@
+---
+title: "TEfastR: fast gene/TE counting, from R"
+author: "Sulev Koks"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    highlight: tango
+    df_print: kable
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+```
+
+## What this is
+
+[TEtranscripts](https://github.com/mhammell-laboratory/TEtranscripts) quantifies
+genes and transposable elements (TEs) from RNA-seq, redistributing
+multi-mapped reads across TE instances with an EM algorithm. Its counting
+stage reads a BAM one alignment at a time through `pysam` and, for every
+read, runs a Python-level loop to build CIGAR-derived intervals and query an
+interval index.
+
+`TEfastR` re-implements that same counting stage in R, but vectorized:
+
+* **One bulk BAM read**, via `GenomicAlignments::readGAlignments()`, instead
+  of a per-alignment loop.
+* **Bulk overlap queries**, via `GenomicRanges::findOverlaps()`, run once
+  for *all* reads against the annotation at once, instead of one query per
+  read.
+* **A sparse-matrix EM step** (`Matrix` package) for redistributing
+  multi-mapped reads across TE instances, instead of a pure-Python loop over
+  every multi-mapped alignment on every iteration.
+
+It reproduces TEtranscripts' assignment rules: unique vs. multi-mapped
+classification, `--stranded` matching, proportional ambiguity resolution for
+reads overlapping more than one gene or TE instance, and the same
+SQUAREM-accelerated EM used by TEtranscripts' own `EMAlgorithm.py`.
+
+### Validation against real data
+
+`tests/testthat/test-count-te.R` cross-checks TEfastR against TEtranscripts'
+own Python counting core (`TEToolkit.Counting.count_transcript_abundance`)
+on synthetic single-end and paired-end fixtures: unique gene/TE assignment,
+locus-level ambiguity, a genuinely multi-mapped read (exercising the EM
+step), paired-end pairing including singletons, all three `--stranded`
+modes, and the fragment-length estimate used for TE effective-length
+correction.
+
+That synthetic suite is necessary but not sufficient -- several of the bugs
+below only showed up on real data, where annotation patterns (many
+overlapping transcript isoforms, thousands of near-identical repeat copies)
+are far messier than anything a small hand-built fixture exercises. On a
+real 44.5-million-alignment paired-end BAM (human, GENCODE v50 +
+RepeatMasker), TEfastR completed GTF loading, counting, and 100 EM
+iterations in **7.3 minutes** on a single core (~54GB peak RSS); per-feature
+counts on a chromosome-14 subset (3,894 genes and TE elements, 6.4M
+alignments) now correlate with the real Python `TEcount` at **r = 0.99999**,
+with 91% of features agreeing to within 1%. Getting there surfaced four real
+bugs, since fixed (see `NEWS`/git history for the fixes; each has a
+regression test):
+
+* A unique read whose single locus overlaps multiple genes (e.g. two
+  transcript isoforms' exons) must be split evenly and *immediately*.
+  TEtranscripts does **not** defer this to its proportional
+  ambiguity-resolution step the way it does for the equivalent single-locus,
+  multiple-TE-instance case. Deferring it (this package's original
+  approach) lets a gene with any confidently-assigned reads elsewhere
+  silently absorb every read that should have been split with a neighbor
+  that has none -- found via a gene nested inside a multi-isoform host
+  gene's shared terminal exon, where one gene absorbed 2x the read pair's
+  true combined total while the other got zero.
+* Similarly, a genuinely multi-mapped read that hits no TE anywhere falls
+  back to gene assignment as *one* deferred entry per **read** (pooling
+  every one of that read's loci, weighted `1/(number of loci)`), not one
+  entry per ambiguous locus.
+* TEtranscripts' naive prior for a multi-mapped read's TE candidates divides
+  by the number of loci that had *at least one TE hit*, not the read's total
+  locus count -- a read can multi-map to a mix of TE-annotated and
+  TE-desert loci, and only the former count toward the divisor.
+* TEtranscripts' EM step is handed an all-zero placeholder for `uniq_counts`
+  internally; the real unique counts are added to the EM's output only
+  afterward. Feeding the real counts into the EM's own effective-length
+  calculation instead skews its starting point so TEs with many confident
+  unique reads absorb ambiguous multi-mapped reads that belong elsewhere --
+  this was the dominant remaining source of error on repeat-dense regions
+  until fixed.
+* The fragment-length estimate that drives TE effective-length correction
+  must come from unique reads only, exclude proper pairs with an insert
+  size over `maxL` (default 500, matching TEtranscripts' `--maxL`), and be
+  floor-divided (integer division, as in the Python `//` TEtranscripts
+  uses) rather than averaged as a float. For a short TE instance, the
+  fractional-vs-floored difference -- or a single unfiltered outlier
+  insert size -- can be enough to flip its effective length across zero,
+  excluding it from EM entirely and handing its reads to a different,
+  longer element instead.
+
+Residual differences after all four fixes are small (the 9% of features
+outside 1% agreement) and consistent with the CIGAR-handling difference
+noted below, not a further correctness bug -- but treat any TEfastR output
+you're about to publish on as worth a spot-check against TEtranscripts on a
+subset first, the same way you'd sanity-check any reimplementation of a
+published method.
+
+### Known differences from TEtranscripts
+
+* CIGAR `"D"` (deletion) is kept within one contiguous aligned block here,
+  via `GenomicAlignments::grglist()`. TEtranscripts's `fetch_exon()` starts a
+  new block at every CIGAR operation, splitting a read into extra tiny
+  fragments around small deletions. Only `"N"` (splice/intron) breaks a
+  block in both implementations -- this only matters for reads overlapping a
+  short indel very close to a feature boundary.
+* A BAM is assumed to be consistently single-end or paired-end, checked once
+  from the first alignment, rather than decided per read.
+* No `--sortByPos` equivalent is needed: reads are grouped by name via a
+  hash join, not file adjacency, so a coordinate-sorted, indexed BAM is read
+  directly -- this also means TEfastR skips the name-sort pass TEtranscripts
+  needs for coordinate-sorted input.
+
+## Installation
+
+```{r, eval = FALSE}
+# from the TEtranscripts repository checkout
+install.packages("TEfastR", repos = NULL, type = "source")
+# or, for iterative development:
+devtools::install("path/to/TEfastR")
+```
+
+## Quick start
+
+Build the gene and TE annotation indexes once -- they don't depend on any
+particular BAM, so build them once per project and reuse them across every
+sample.
+
+```{r setup}
+library(TEfastR)
+
+te_gtf <- system.file("extdata", "te.gtf", package = "TEfastR")
+gene_gtf <- system.file("extdata", "gene.gtf", package = "TEfastR")
+bam <- system.file("extdata", "test.bam", package = "TEfastR")
+
+te_index <- build_te_annotation(te_gtf)
+gene_index <- build_gene_annotation(gene_gtf)
+
+te_index$n          # number of TE instances
+length(gene_index$genes)
+```
+
+Then count one BAM file:
+
+```{r}
+result <- count_te(bam, gene_index, te_index, stranded = "no", mode = "multi", iteration = 100)
+result
+result$gene_counts
+result$te_element_counts
+```
+
+`count_te()` returns a `TEfastR_result` list with `gene_counts`,
+`te_instance_counts` (per TE instance, before grouping into elements),
+`te_element_counts` (TE instances summed by `gene_id:family_id:class_id`,
+matching TEtranscripts' own output granularity), and `stats` (read
+classification counts and the estimated fragment length used for the EM
+step's effective-length correction).
+
+Convert to a plain data frame, or write TEtranscripts' own `.cntTable`
+format directly:
+
+```{r}
+head(as.data.frame(result))
+```
+
+```{r, eval = FALSE}
+write_count_table(result, "sample1.cntTable")
+```
+
+## Counting several samples and handing off to DESeq2
+
+`count_te_batch()` counts a set of BAM files and assembles a feature x
+sample matrix -- the same shape `DESeq2::DESeqDataSetFromMatrix()` expects,
+so the whole pipeline can stay inside one R session instead of shelling out
+to TEtranscripts' generated R script:
+
+```{r, eval = FALSE}
+bams <- c(
+  treatment1 = "treatment_rep1.bam", treatment2 = "treatment_rep2.bam",
+  control1   = "control_rep1.bam",   control2   = "control_rep2.bam"
+)
+
+counts <- count_te_batch(bams, gene_index, te_index, stranded = "no", mode = "multi")
+
+library(DESeq2)
+sample_info <- data.frame(
+  group = factor(c("treatment", "treatment", "control", "control")),
+  row.names = colnames(counts)
+)
+dds <- DESeqDataSetFromMatrix(countData = round(counts), colData = sample_info, design = ~ group)
+dds$group <- relevel(dds$group, ref = "control")
+dds <- DESeq(dds)
+results(dds)
+```
+
+(`round()` is needed because TE counts are fractional after EM
+redistribution -- the same rounding TEtranscripts' own generated R script
+applies before handing counts to DESeq2.)
+
+## Command-line usage
+
+For use outside R/RStudio, a CLI wrapper ships in `inst/scripts`, mirroring
+TEtranscripts' own `TEcount`:
+
+```{r, eval = FALSE}
+system.file("scripts", "run_te_count.R", package = "TEfastR")
+```
+
+```sh
+Rscript "$(Rscript -e 'cat(system.file("scripts","run_te_count.R",package="TEfastR"))')" \
+  --bam sample.bam --gtf genes.gtf --te te.gtf \
+  --stranded no --mode multi --iteration 100 --out sample.cntTable
+```
+
+## Reference
+
+* `build_gene_annotation()` / `build_te_annotation()` -- parse GTFs once.
+* `count_te()` -- count one BAM against a pair of annotation indexes.
+* `count_te_batch()` -- count several BAMs into one count matrix.
+* `write_count_table()` / `as.data.frame.TEfastR_result()` -- get counts out.

@@ -1,0 +1,5 @@
+chr1	t	exon	500	600	.	+	.	gene_id "TE1"; transcript_id "TE1_i1"; family_id "FAM1"; class_id "CLASS1";
+chr1	t	exon	1000	1100	.	+	.	gene_id "TE2"; transcript_id "TE2_i1"; family_id "FAM2"; class_id "CLASS2";
+chr1	t	exon	1050	1150	.	+	.	gene_id "TE3"; transcript_id "TE3_i1"; family_id "FAM2"; class_id "CLASS2";
+chr1	t	exon	1200	1300	.	+	.	gene_id "TE4"; transcript_id "TE4_i1"; family_id "FAM3"; class_id "CLASS3";
+chr1	t	exon	1400	1500	.	+	.	gene_id "TE5"; transcript_id "TE5_i1"; family_id "FAM3"; class_id "CLASS3";

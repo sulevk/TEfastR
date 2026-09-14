@@ -1,0 +1,37 @@
+Package: TEfastR
+Title: Fast, Vectorized Gene/Transposable Element Read Counting
+Version: 0.1.0
+Authors@R: person("Sulev", "Koks", role = c("aut", "cre"),
+    email = "sulevkoks@gmail.com")
+Description: A vectorized, Bioconductor-based reimplementation of the
+    read-counting stage of TEtranscripts (Jin et al. 2015)
+    <doi:10.1093/bioinformatics/btv422>. Counts reads/fragments in a BAM
+    file against gene and transposable element (TE) annotations, using
+    bulk GenomicRanges overlap operations instead of a per-alignment loop,
+    and a sparse-matrix SQUAREM EM algorithm to redistribute multi-mapped
+    reads across TE instances. Produces the same gene/TE count table used
+    by TEtranscripts' downstream DESeq2-based differential expression
+    step. See the package vignette for a user guide and known differences
+    from the Python TEtranscripts implementation.
+License: Artistic-2.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Depends: R (>= 4.1)
+Imports:
+    GenomicAlignments,
+    GenomicRanges,
+    IRanges,
+    Rsamtools,
+    S4Vectors,
+    Matrix,
+    data.table,
+    stringi
+Suggests:
+    testthat (>= 3.0.0),
+    withr,
+    knitr,
+    rmarkdown,
+    DESeq2
+VignetteBuilder: knitr
+Config/testthat/edition: 3
