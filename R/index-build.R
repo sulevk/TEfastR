@@ -7,6 +7,11 @@
 #' @param te_gtf Path to the TE GTF file.
 #' @param feature_type GTF feature (column 3) to keep. Default `"exon"`.
 #' @return A `TEfastR_te_index` object (a list); pass it to [count_te()].
+#'   Its `loci` element is a data frame with one row per TE instance (genomic
+#'   locus), in the same order as `count_te()`'s `te_instance_counts`:
+#'   `locus_id` (TElocal-style `transcript_id:gene_id:family_id:class_id`),
+#'   `chrom`, `start`, `end` (1-based, inclusive, as in the GTF), `strand`,
+#'   `transcript_id`, `subfamily` (`gene_id`), `family`, `class`, `length`.
 #' @examples
 #' te_gtf <- system.file("extdata", "te.gtf", package = "TEfastR")
 #' te_index <- build_te_annotation(te_gtf)
@@ -17,13 +22,22 @@ build_te_annotation <- function(te_gtf, feature_type = "exon") {
   gr <- GenomicRanges::GRanges(te_dt$chrom, IRanges::IRanges(te_dt$start, te_dt$end),
                                 strand = te_dt$strand)
   elements <- sort(unique(te_dt$ele_name))
+  len <- te_dt$end - te_dt$start + 1L
+  # TElocal's locus ID format; made unique in case a GTF reuses transcript_ids
+  locus_id <- make.unique(paste(te_dt$transcript_id, te_dt$ele_name, sep = ":"), sep = "_")
+  loci <- data.frame(locus_id = locus_id, chrom = te_dt$chrom, start = te_dt$start,
+                     end = te_dt$end, strand = te_dt$strand,
+                     transcript_id = te_dt$transcript_id, subfamily = te_dt$gene_id,
+                     family = te_dt$family_id, class = te_dt$class_id, length = len,
+                     stringsAsFactors = FALSE)
   structure(list(
     gr = gr,
     strand = te_dt$strand,
     ele_idx = match(te_dt$ele_name, elements),
     elements = elements,
-    length = te_dt$end - te_dt$start + 1L,
-    n = nrow(te_dt)
+    length = len,
+    n = nrow(te_dt),
+    loci = loci
   ), class = "TEfastR_te_index")
 }
 

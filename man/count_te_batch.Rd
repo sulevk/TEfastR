@@ -4,7 +4,7 @@
 \alias{count_te_batch}
 \title{Count several BAM files and assemble a feature x sample count matrix}
 \usage{
-count_te_batch(bams, gene_index, te_index, ...)
+count_te_batch(bams, gene_index, te_index, ..., level = c("element", "locus"))
 }
 \arguments{
 \item{bams}{A named or unnamed character vector of BAM paths. If unnamed,
@@ -16,10 +16,15 @@ sample names are derived from the file names (extension stripped).}
 
 \item{...}{Passed on to \code{\link[=count_te]{count_te()}} (\code{stranded}, \code{mode}, \code{iteration},
 \code{fragLength}).}
+
+\item{level}{\code{"element"} (default: TE instances summed per element, as in
+TEtranscripts) or \code{"locus"} (one row per TE instance, as in TElocal;
+row names are \code{te_index$loci$locus_id}, so coordinates can be joined
+back from \code{te_index$loci}).}
 }
 \value{
-A numeric matrix, genes and TE elements in rows, samples in
-columns.
+A numeric matrix, genes then TE elements (or TE loci) in rows,
+samples in columns.
 }
 \description{
 Convenience wrapper around \code{\link[=count_te]{count_te()}} for multi-sample projects: builds
