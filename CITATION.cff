@@ -15,7 +15,7 @@ authors:
   - family-names: Koks
     given-names: Sulev
     orcid: "https://orcid.org/0000-0001-6087-6643"
-version: 0.2.0
+version: 0.2.1
 date-released: "2026-11-15"
 license: Artistic-2.0
 doi: 10.5281/zenodo.24238942
