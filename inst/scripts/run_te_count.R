@@ -7,14 +7,15 @@
 # Usage:
 #   Rscript run_te_count.R --bam sample.bam --gtf genes.gtf --te te.gtf \
 #     [--stranded no|forward|reverse] [--mode multi|uniq] [--iteration 100] \
-#     [--fragLength 0] [--feature exon] [--id_attribute gene_id] [--out sample.cntTable]
+#     [--fragLength 0] [--feature exon] [--id_attribute gene_id] [--out sample.cntTable] \
+#     [--locus_out sample.locus.tsv]
 
 suppressPackageStartupMessages(library(TEfastR))
 
 .parse_args <- function(argv) {
   args <- list(bam = NULL, gtf = NULL, te = NULL, stranded = "no", mode = "multi",
                iteration = "100", fragLength = "0", feature = "exon",
-               id_attribute = "gene_id", out = NULL)
+               id_attribute = "gene_id", out = NULL, locus_out = NULL)
   i <- 1
   while (i <= length(argv)) {
     key <- argv[[i]]
@@ -26,7 +27,8 @@ suppressPackageStartupMessages(library(TEfastR))
   if (is.null(args$bam) || is.null(args$gtf) || is.null(args$te))
     stop("Usage: --bam <file> --gtf <gene GTF> --te <TE GTF> ",
          "[--stranded no|forward|reverse] [--mode uniq|multi] [--iteration N] ",
-         "[--fragLength N] [--feature exon] [--id_attribute gene_id] [--out path]")
+         "[--fragLength N] [--feature exon] [--id_attribute gene_id] [--out path] ",
+         "[--locus_out path]")
   if (is.null(args$out))
     args$out <- paste0(tools::file_path_sans_ext(basename(args$bam)), ".cntTable")
   args
@@ -50,3 +52,8 @@ print(result)
 
 write_count_table(result, args$out)
 message("Wrote ", args$out)
+
+if (!is.null(args$locus_out)) {
+  write_locus_table(result, te_index, args$locus_out)
+  message("Wrote per-locus TE counts (with coordinates) to ", args$locus_out)
+}

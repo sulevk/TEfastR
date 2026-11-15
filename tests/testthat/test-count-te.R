@@ -195,3 +195,40 @@ test_that("count_te_batch assembles a feature x sample matrix", {
   expect_equal(colnames(mat), c("s1", "s2"))
   expect_equal(mat["GeneA", "s1"], mat["GeneA", "s2"])
 })
+
+test_that("per-locus TE counts carry coordinates and sum to element counts", {
+  te_gtf <- system.file("extdata", "te.gtf", package = "TEfastR")
+  gene_gtf <- system.file("extdata", "gene.gtf", package = "TEfastR")
+  bam <- system.file("extdata", "test.bam", package = "TEfastR")
+  te_index <- build_te_annotation(te_gtf)
+  gene_index <- build_gene_annotation(gene_gtf)
+  result <- count_te(bam, gene_index, te_index, iteration = 100L)
+
+  all_loci <- te_locus_counts(result, te_index, min_count = -Inf)
+  expect_equal(nrow(all_loci), te_index$n)
+  expect_equal(all_loci$locus_id[1], "TE1_i1:TE1:FAM1:CLASS1")
+  expect_equal(all_loci[1, c("chrom", "start", "end", "strand")],
+               data.frame(chrom = "chr1", start = 500L, end = 600L, strand = "+"),
+               ignore_attr = TRUE)
+  # loci summed per element reproduce the element-level counts
+  ele <- tapply(all_loci$count, paste(all_loci$subfamily, all_loci$family, all_loci$class, sep = ":"), sum)
+  expect_equal(as.numeric(ele[names(result$te_element_counts)]),
+               unname(result$te_element_counts), tolerance = 1e-9)
+
+  nonzero <- te_locus_counts(result, te_index)
+  expect_true(all(nonzero$count > 0))
+
+  tmp <- withr::local_tempdir()
+  path <- write_locus_table(result, te_index, file.path(tmp, "loci.tsv"))
+  back <- utils::read.delim(path)
+  expect_equal(colnames(back)[1:5], c("locus_id", "chrom", "start", "end", "strand"))
+  expect_equal(nrow(back), nrow(nonzero))
+
+  mat <- count_te_batch(c(s1 = bam), gene_index, te_index, iteration = 100L, level = "locus")
+  expect_equal(nrow(mat), length(gene_index$genes) + te_index$n)
+  expect_equal(unname(mat[te_index$loci$locus_id, "s1"]), result$te_instance_counts)
+
+  expect_error(te_locus_counts(result, build_te_annotation(write_gtf(
+    'chr1\tt\texon\t1\t50\t.\t+\t.\tgene_id "X"; transcript_id "X_1"; family_id "F"; class_id "C";',
+    tmp, "one.gtf"))), "does not match")
+})

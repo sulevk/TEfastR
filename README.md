@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/32676347/README.md)
 # TEfastR
 
 Fast, vectorized gene and transposable element (TE) read counting in R.
@@ -119,6 +118,28 @@ res <- results(DESeq(dds))
 The counts need `round()` because EM makes TE counts fractional.
 TEtranscripts' generated R script rounds them the same way.
 
+## Per-locus TE counts with coordinates
+
+TEfastR counts every TE copy in the GTF before summing copies per element, so
+the per-copy counts come with their genomic locations:
+
+```r
+loci <- te_locus_counts(result, te_index)      # loci with count > 0
+head(loci)
+#>                 locus_id chrom start end strand ... subfamily family class length count
+write_locus_table(result, te_index, "sample.locus.tsv")
+
+# feature x sample matrix with one row per TE copy (TElocal-style), for DESeq2
+locus_counts <- count_te_batch(bams, gene_index, te_index, level = "locus")
+coords <- te_index$loci   # rows match rownames(locus_counts) after the genes
+```
+
+Locus IDs use TElocal's format, `transcript_id:gene_id:family_id:class_id`
+(for example `L1M2_dup229:L1M2:L1:LINE`). Coordinates are 1-based and
+inclusive, as in the GTF. Treat counts for young, near-identical copies as
+EM estimates. Counts for older, more divergent copies, which get mostly
+uniquely mapped reads, are much more reliable.
+
 ## Command line
 
 A command-line wrapper that mirrors TEtranscripts' `TEcount` is installed
@@ -131,8 +152,9 @@ Rscript "$SCRIPT" --bam sample.bam --gtf genes.gtf --te te.gtf \
   --stranded no --mode multi --iteration 100 --out sample.cntTable
 ```
 
-Other options: `--fragLength`, `--feature` (default `exon`), and
-`--id_attribute` (default `gene_id`).
+Other options: `--fragLength`, `--feature` (default `exon`),
+`--id_attribute` (default `gene_id`), and `--locus_out sample.locus.tsv`
+(also write per-locus TE counts with coordinates).
 
 ## Input formats
 

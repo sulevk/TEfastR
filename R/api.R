@@ -100,6 +100,64 @@ write_count_table <- function(result, path) {
   invisible(path)
 }
 
+#' Per-locus TE counts with genomic coordinates
+#'
+#' Joins a [count_te()] result's per-instance TE counts back to each
+#' instance's genomic location from the TE index -- the TElocal-style view of
+#' the same counts that [write_count_table()] reports summed per element.
+#'
+#' Per-locus counts for young, near-identical TE copies depend heavily on the
+#' EM's split of multi-mapped reads and should be read as estimates;
+#' uniquely-mappable (older, more divergent) loci are far more reliable.
+#'
+#' @param result A `TEfastR_result`, from [count_te()].
+#' @param te_index The `TEfastR_te_index` used to produce `result`.
+#' @param min_count Keep only loci with a count strictly above this value.
+#'   Default `0` drops the (usually millions of) zero-count loci; use `-Inf`
+#'   to keep every locus.
+#' @return A data frame: `locus_id`, `chrom`, `start`, `end` (1-based,
+#'   inclusive), `strand`, `transcript_id`, `subfamily`, `family`, `class`,
+#'   `length`, `count`, ordered as in the TE GTF.
+#' @examples
+#' te_gtf <- system.file("extdata", "te.gtf", package = "TEfastR")
+#' gene_gtf <- system.file("extdata", "gene.gtf", package = "TEfastR")
+#' bam <- system.file("extdata", "test.bam", package = "TEfastR")
+#' te_index <- build_te_annotation(te_gtf)
+#' result <- count_te(bam, build_gene_annotation(gene_gtf), te_index)
+#' te_locus_counts(result, te_index)
+#' @export
+te_locus_counts <- function(result, te_index, min_count = 0) {
+  stopifnot(inherits(result, "TEfastR_result"), inherits(te_index, "TEfastR_te_index"))
+  .check_locus_index(te_index, length(result$te_instance_counts))
+  out <- te_index$loci
+  out$count <- result$te_instance_counts
+  out <- out[out$count > min_count, , drop = FALSE]
+  rownames(out) <- NULL
+  out
+}
+
+#' Write per-locus TE counts with coordinates to a TSV file
+#'
+#' Writes [te_locus_counts()] as a tab-separated table with a header row.
+#'
+#' @inheritParams te_locus_counts
+#' @param path Output file path.
+#' @return `path`, invisibly.
+#' @export
+write_locus_table <- function(result, te_index, path, min_count = 0) {
+  data.table::fwrite(te_locus_counts(result, te_index, min_count), path, sep = "\t",
+                     quote = FALSE)
+  invisible(path)
+}
+
+.check_locus_index <- function(te_index, n_counts) {
+  if (is.null(te_index$loci))
+    stop("This TE index has no locus table; rebuild it with build_te_annotation().")
+  if (nrow(te_index$loci) != n_counts)
+    stop("TE index does not match this result (", nrow(te_index$loci), " loci vs ",
+         n_counts, " instance counts); pass the te_index used for counting.")
+}
+
 #' Count several BAM files and assemble a feature x sample count matrix
 #'
 #' Convenience wrapper around [count_te()] for multi-sample projects: builds
@@ -112,10 +170,14 @@ write_count_table <- function(result, path) {
 #'   sample names are derived from the file names (extension stripped).
 #' @param gene_index A `TEfastR_gene_index`, from [build_gene_annotation()].
 #' @param te_index A `TEfastR_te_index`, from [build_te_annotation()].
+#' @param level `"element"` (default: TE instances summed per element, as in
+#'   TEtranscripts) or `"locus"` (one row per TE instance, as in TElocal;
+#'   row names are `te_index$loci$locus_id`, so coordinates can be joined
+#'   back from `te_index$loci`).
 #' @param ... Passed on to [count_te()] (`stranded`, `mode`, `iteration`,
 #'   `fragLength`).
-#' @return A numeric matrix, genes and TE elements in rows, samples in
-#'   columns.
+#' @return A numeric matrix, genes then TE elements (or TE loci) in rows,
+#'   samples in columns.
 #' @examples
 #' te_gtf <- system.file("extdata", "te.gtf", package = "TEfastR")
 #' gene_gtf <- system.file("extdata", "gene.gtf", package = "TEfastR")
@@ -125,13 +187,17 @@ write_count_table <- function(result, path) {
 #' mat <- count_te_batch(c(sample1 = bam), gene_index, te_index)
 #' dim(mat)
 #' @export
-count_te_batch <- function(bams, gene_index, te_index, ...) {
+count_te_batch <- function(bams, gene_index, te_index, ..., level = c("element", "locus")) {
+  level <- match.arg(level)
   if (is.null(names(bams)) || any(names(bams) == "")) {
     names(bams) <- tools::file_path_sans_ext(basename(bams))
   }
+  if (level == "locus") .check_locus_index(te_index, te_index$n)
   results <- lapply(bams, count_te, gene_index = gene_index, te_index = te_index, ...)
-  ids <- c(names(results[[1]]$gene_counts), names(results[[1]]$te_element_counts))
-  mat <- vapply(results, function(r) c(r$gene_counts, r$te_element_counts), numeric(length(ids)))
+  te_ids <- if (level == "locus") te_index$loci$locus_id else names(results[[1]]$te_element_counts)
+  te_of <- if (level == "locus") function(r) r$te_instance_counts else function(r) r$te_element_counts
+  ids <- c(names(results[[1]]$gene_counts), te_ids)
+  mat <- vapply(results, function(r) c(r$gene_counts, te_of(r)), numeric(length(ids)))
   rownames(mat) <- ids
   colnames(mat) <- names(bams)
   mat

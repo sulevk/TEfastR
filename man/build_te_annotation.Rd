@@ -13,6 +13,11 @@ build_te_annotation(te_gtf, feature_type = "exon")
 }
 \value{
 A \code{TEfastR_te_index} object (a list); pass it to \code{\link[=count_te]{count_te()}}.
+Its \code{loci} element is a data frame with one row per TE instance (genomic
+locus), in the same order as \code{count_te()}'s \code{te_instance_counts}:
+\code{locus_id} (TElocal-style \code{transcript_id:gene_id:family_id:class_id}),
+\code{chrom}, \code{start}, \code{end} (1-based, inclusive, as in the GTF), \code{strand},
+\code{transcript_id}, \code{subfamily} (\code{gene_id}), \code{family}, \code{class}, \code{length}.
 }
 \description{
 Parses a TE GTF and builds the \code{\link[GenomicRanges:GRanges-class]{GenomicRanges::GRanges()}} index used by
