@@ -1,5 +1,7 @@
 # TEfastR
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24238942.svg)](https://doi.org/10.5281/zenodo.24238942)
+
 Fast, vectorized gene and transposable element (TE) read counting in R.
 
 TEfastR re-implements the read-counting stage of
@@ -183,9 +185,24 @@ the bugs that real-data validation found and how they were fixed:
 vignette("TEfastR")
 ```
 
-## Citation
+## How to cite
 
-If you use TEfastR, please also cite the original TEtranscripts paper:
+If you use TEfastR, please cite it with its Zenodo DOI:
+
+> Koks, S. TEfastR: fast, vectorized gene and transposable element read
+> counting in R. Zenodo. https://doi.org/10.5281/zenodo.24238942
+
+| DOI | Use |
+|---|---|
+| [10.5281/zenodo.24238942](https://doi.org/10.5281/zenodo.24238942) | **All versions.** Always resolves to the latest release; use this to cite the package in general |
+| [10.5281/zenodo.24238943](https://doi.org/10.5281/zenodo.24238943) | **v0.2.0 only.** Use this when a methods section must name the exact version used |
+
+In R, `citation("TEfastR")` prints the reference (and the TEtranscripts paper
+below). GitHub's "Cite this repository" button gives it in APA and BibTeX.
+Every later release gets its own version DOI on
+[Zenodo](https://doi.org/10.5281/zenodo.24238942).
+
+Please also cite the original TEtranscripts paper:
 
 > Jin Y, Tam OH, Paniagua E, Hammell M. TEtranscripts: a package for including
 > transposable elements in differential expression analysis of RNA-seq

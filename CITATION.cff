@@ -18,6 +18,7 @@ authors:
 version: 0.2.0
 date-released: "2026-11-15"
 license: Artistic-2.0
+doi: 10.5281/zenodo.24238942
 repository-code: "https://github.com/sulevk/TEfastR"
 keywords:
   - transposable elements
