@@ -1,6 +1,6 @@
 Package: TEfastR
 Title: Fast, Vectorized Gene/Transposable Element Read Counting
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Sulev", "Koks", role = c("aut", "cre"),
     email = "sulevkoks@gmail.com")
 Description: A vectorized, Bioconductor-based reimplementation of the

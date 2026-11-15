@@ -1,0 +1,35 @@
+citHeader("To cite TEfastR in publications, please use:")
+
+bibentry(
+  bibtype = "Manual",
+  title = "TEfastR: Fast, Vectorized Gene and Transposable Element Read Counting in R",
+  author = person("Sulev", "Koks", comment = c(ORCID = "0000-0001-6087-6643")),
+  year = "2026",
+  note = "R package version 0.2.0",
+  url = "https://github.com/sulevk/TEfastR",
+  textVersion = paste(
+    "Koks S (2026). TEfastR: Fast, Vectorized Gene and Transposable Element",
+    "Read Counting in R. R package version 0.2.0.",
+    "https://github.com/sulevk/TEfastR"
+  )
+)
+
+bibentry(
+  bibtype = "Article",
+  title = paste("TEtranscripts: a package for including transposable elements",
+                "in differential expression analysis of RNA-seq datasets"),
+  author = c(person("Ying", "Jin"), person(c("Oliver", "H."), "Tam"),
+             person("Eric", "Paniagua"), person("Molly", "Hammell")),
+  journal = "Bioinformatics",
+  year = "2015",
+  volume = "31",
+  number = "22",
+  pages = "3593--3599",
+  doi = "10.1093/bioinformatics/btv422",
+  textVersion = paste(
+    "Jin Y, Tam OH, Paniagua E, Hammell M (2015). TEtranscripts: a package",
+    "for including transposable elements in differential expression analysis",
+    "of RNA-seq datasets. Bioinformatics 31(22):3593-3599.",
+    "doi:10.1093/bioinformatics/btv422"
+  )
+)

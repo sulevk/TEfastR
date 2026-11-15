@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: >-
+  If you use TEfastR, please cite it using the metadata below, and also cite
+  TEtranscripts (see references).
+title: "TEfastR: fast, vectorized gene and transposable element read counting in R"
+abstract: >-
+  TEfastR is a vectorized, Bioconductor-based reimplementation of the
+  read-counting stage of TEtranscripts. It counts reads in a BAM file against
+  gene and transposable element (TE) annotations using bulk GenomicRanges
+  overlaps, redistributes multi-mapped reads across TE instances with a
+  sparse-matrix SQUAREM EM algorithm, and reports gene, TE element and
+  per-locus TE counts with genomic coordinates.
+type: software
+authors:
+  - family-names: Koks
+    given-names: Sulev
+    orcid: "https://orcid.org/0000-0001-6087-6643"
+version: 0.2.0
+date-released: "2026-11-15"
+license: Artistic-2.0
+repository-code: "https://github.com/sulevk/TEfastR"
+keywords:
+  - transposable elements
+  - RNA-seq
+  - R
+  - Bioconductor
+  - TEtranscripts
+references:
+  - type: article
+    title: >-
+      TEtranscripts: a package for including transposable elements in
+      differential expression analysis of RNA-seq datasets
+    authors:
+      - family-names: Jin
+        given-names: Ying
+      - family-names: Tam
+        given-names: Oliver H.
+      - family-names: Paniagua
+        given-names: Eric
+      - family-names: Hammell
+        given-names: Molly
+    journal: Bioinformatics
+    volume: 31
+    issue: 22
+    start: 3593
+    end: 3599
+    year: 2015
+    doi: 10.1093/bioinformatics/btv422
