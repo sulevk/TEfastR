@@ -195,7 +195,7 @@ If you use TEfastR, please cite it with its Zenodo DOI:
 | DOI | Use |
 |---|---|
 | [10.5281/zenodo.24238942](https://doi.org/10.5281/zenodo.24238942) | **All versions.** Always resolves to the latest release; use this to cite the package in general |
-| [10.5281/zenodo.24238943](https://doi.org/10.5281/zenodo.24238943) | **v0.2.0 only.** Use this when a methods section must name the exact version used |
+| [10.5281/zenodo.24238957](https://doi.org/10.5281/zenodo.24238957) | **v0.2.1 only.** Use this when a methods section must name the exact version used |
 
 In R, `citation("TEfastR")` prints the reference (and the TEtranscripts paper
 below). GitHub's "Cite this repository" button gives it in APA and BibTeX.
